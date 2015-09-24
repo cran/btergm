@@ -527,13 +527,17 @@ gof.btergm <- function(object, target = NULL, formula = getformula(object),
   }
   
   # call tergmprepare and integrate results as a child environment in the chain
-  if (class(object) == "btergm") {
+  if (class(object)[1] == "btergm") {
     env <- tergmprepare(formula = formula, offset = object@offset, 
         verbose = verbose)
     parent.env(env) <- environment()
     offset <- object@offset
   } else {
-    env <- tergmprepare(formula = formula, offset = FALSE, verbose = FALSE)
+    if ("mtergm" %in% class(object)) {
+      env <- tergmprepare(formula = formula, offset = TRUE, verbose = FALSE)
+    } else {
+      env <- tergmprepare(formula = formula, offset = FALSE, verbose = FALSE)
+    }
     parent.env(env) <- environment()
     offset <- FALSE
   }
@@ -554,7 +558,7 @@ gof.btergm <- function(object, target = NULL, formula = getformula(object),
   }
   
   # extract coefficients from object
-  if (class(object) == "btergm" && offset == TRUE) {
+  if (class(object)[1] == "btergm" && offset == TRUE) {
     coefs <- c(coef(object), -Inf)  # -Inf for offset matrix
   } else {
     coefs <- coef(object)
@@ -565,17 +569,22 @@ gof.btergm <- function(object, target = NULL, formula = getformula(object),
   tstats <- list()
   degen <- list()
   for (index in 1:env$time.steps) {
+    i <- index
     # simulations for statnet-style and rocpr GOF
     if (classicgof == TRUE || rocprgof == TRUE) {
       if (verbose == TRUE) {
-        if (class(object) == "ergm") {
-          f.i <- paste(deparse(formula), collapse = "")
-          f.i <- gsub("\\s+", " ", f.i)
-        } else {
+        if ("btergm" %in% class(object) || "mtergm" %in% class(object)) {
           f.i <- gsub("\\[\\[i\\]\\]", paste0("[[", index, "]]"), 
               paste(deparse(env$form), collapse = ""))
           f.i <- gsub("\\s+", " ", f.i)
-          f.i <- gsub("^networks", env$lhs.original, f.i)
+          if ("btergm" %in% class(object)) {
+            f.i <- gsub("^networks", env$lhs.original, f.i)
+          }
+        } else if ("ergm" %in% class(object)) {
+          f.i <- paste(deparse(formula), collapse = "")
+          f.i <- gsub("\\s+", " ", f.i)
+        } else {
+          stop(paste("Unknown object type:", class(object)))
         }
         message(paste("Simulating", nsim, 
             "networks from the following formula:\n", f.i, "\n"))
@@ -585,7 +594,6 @@ gof.btergm <- function(object, target = NULL, formula = getformula(object),
           ncpus <- 0
           p <- NULL
         }
-        i <- index
         sim[[index]] <- simulate.formula(env$form, nsim = nsim, 
             coef = coefs, constraints = ~ ., 
             control = control.simulate.formula(MCMC.interval = 
@@ -613,7 +621,7 @@ gof.btergm <- function(object, target = NULL, formula = getformula(object),
   if (env$time.steps == 1) {
     message("One network from which simulations are drawn was provided.")
   } else {
-    message(paste(object@time.steps, "networks from which simulations are",
+    message(paste(env$time.steps, "networks from which simulations are",
         "drawn were provided."))
   }
   
@@ -634,7 +642,7 @@ gof.btergm <- function(object, target = NULL, formula = getformula(object),
       degensim <- rbind(degensim, degen[[i]])
       target.stats[[i]] <- tstats[[i]]
     }
-    if (offset == TRUE) {
+    if (offset == TRUE || "mtergm" %in% class(object)) {
       degensim <- degensim[, -ncol(degensim)]  # get rid of offset statistic
     }
     rm(tstats)
@@ -645,10 +653,20 @@ gof.btergm <- function(object, target = NULL, formula = getformula(object),
   if (length(env$networks) == length(target)) {
     for (i in 1:env$time.steps) {
       env$networks[[i]] <- as.matrix(env$networks[[i]])
+      target[[i]] <- as.matrix(target[[i]])
+      if (nrow(target[[i]]) != nrow(env$networks[[i]])) {
+        stop(paste0("Dimensions of observed network and target do not match ", 
+            "at t = ", i, ": observed network has ", nrow(env$networks[[i]]), 
+            " rows while target has ", nrow(target[[i]]), " rows."))
+      }
+      if (ncol(target[[i]]) != ncol(env$networks[[i]])) {
+        stop(paste0("Dimensions of observed network and target do not match ", 
+            "at t = ", i, ": observed network has ", ncol(env$networks[[i]]), 
+            " columns while target has ", ncol(target[[i]]), " columns."))
+      }
       env$networks[[i]][is.na(as.matrix(target[[i]]))] <- NA
       env$networks[[i]] <- network::network(env$networks[[i]], 
           directed = env$directed, bipartite = env$bipartite)
-      target[[i]] <- as.matrix(target[[i]])
       target[[i]][is.na(as.matrix(env$networks[[i]]))] <- NA
       target[[i]] <- network::network(target[[i]], directed = env$directed, 
           bipartite = env$bipartite)
@@ -1212,14 +1230,15 @@ plot.btergmgof <- function(x, boxplot = TRUE, boxplot.mfrow = TRUE,
     boxplot.odegree.max = NULL, boxplot.kstar.max = NULL, 
     boxplot.istar.max = NULL, boxplot.ostar.max = NULL, 
     boxplot.transform = function(x) x, boxplot.border = "darkgray", 
-    boxplot.mean.col = "black", boxplot.median.col = "black", 
-    boxplot.lwd = 0.8, boxplot.outline = FALSE, boxplot.ylab = "Frequency", 
-    boxplot.main = NULL, boxplot.ylim = NULL, roc = TRUE, pr = TRUE, 
-    rocpr.add = FALSE, rocpr.avg = c("none", "horizontal", "vertical", 
-    "threshold"), rocpr.spread = c("boxplot", "stderror", "stddev"), 
-    rocpr.lwd = 3, roc.main = NULL, roc.random = FALSE, roc.col = "#bd0017", 
-    roc.random.col = "#bd001744", pr.main = NULL, pr.random = FALSE, 
-    pr.col = "#5886be", pr.random.col = "#5886be44", pr.poly = 0, ...) {
+    boxplot.mean = TRUE, boxplot.median = TRUE, boxplot.mean.col = "black", 
+    boxplot.median.col = "black", boxplot.lwd = 0.8, boxplot.outline = FALSE, 
+    boxplot.ylab = "Frequency", boxplot.main = NULL, boxplot.ylim = NULL, 
+    roc = TRUE, pr = TRUE, rocpr.add = FALSE, rocpr.avg = c("none", 
+    "horizontal", "vertical", "threshold"), rocpr.spread = c("boxplot", 
+    "stderror", "stddev"), rocpr.lwd = 3, roc.main = NULL, roc.random = FALSE, 
+    roc.col = "#bd0017", roc.random.col = "#bd001744", pr.main = NULL, 
+    pr.random = FALSE, pr.col = "#5886be", pr.random.col = "#5886be44", 
+    pr.poly = 0, ...) {
   
   # boxplots of simulations vs. observed statistics (classic, statnet-style GOF)
   if (boxplot == TRUE && !is.null(x$statistics) && !is.null(x$raw)) {
@@ -1399,17 +1418,28 @@ plot.btergmgof <- function(x, boxplot = TRUE, boxplot.mfrow = TRUE,
         }
       }
       if (ok == TRUE) {
-        if (ncol(x$statistics[[i]]) == 9) {
+        if (ncol(x$statistics[[i]]) == 9 && boxplot.mean == TRUE) {
           lines(obs.mean, lwd = 2 * boxplot.lwd, type = "l", lty = "dashed", 
               col = boxplot.mean.col)
         }
-        lines(obs, lwd = 3 * boxplot.lwd, type = "l", col = boxplot.median.col)
+        if (boxplot.median == TRUE) {
+          lines(obs, lwd = 3 * boxplot.lwd, type = "l", 
+              col = boxplot.median.col)
+        }
       }
     }
     if (ncol(x$statistics[[1]]) == 9) {
-      message(paste("Note: The solid line in the boxplots represents the",
-          "median of the observed networks and the dashed line represents", 
-          "the mean."))
+      if (boxplot.median == TRUE && boxplot.mean == TRUE) {
+        message(paste("Note: The solid line in the boxplots represents the",
+            "median of the observed networks and the dashed line represents", 
+            "the mean."))
+      } else if (boxplot.median == FALSE) {
+        message(paste("Note: The dashed line in the boxplots represents the",
+            "mean of the observed networks."))
+      } else if (boxplot.mean == FALSE) {
+        message(paste("Note: The solid line in the boxplots represents the",
+            "median of the observed networks."))
+      }
     }
   } else if (boxplot == TRUE) {
     message("The object does not contain any classic GOF data.")
