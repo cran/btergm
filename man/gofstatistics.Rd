@@ -289,17 +289,12 @@ dens <- function(mat) {             # univariate: one argument
 # For illustrative purposes, let us consider an existing statistic, the 
 # indegree distribution, a multivariate statistic. It also accepts a 
 # single argument. Note that the sparse matrix is converted to a 
-# normal matrix object when it is used. First, an error message is 
-# printed if the network is undirected. This is caught by the gof 
-# methods, and a message about it is printed. statnet's summary 
-# method is then used to compute the statistic. Names are attached 
-# to the resulting vector for the different indegree values. Then the 
-# vector is returned.
+# normal matrix object when it is used. First, statnet's summary 
+# method is used to compute the statistic. Names are attached to the 
+# resulting vector for the different indegree values. Then the vector 
+# is returned.
 
 ideg <- function(mat) {
-  if (!is.mat.directed(as.matrix(mat))) {
-    stop("'ideg' can only be used with directed networks.")
-  }
   d <- summary(mat ~ idegree(0:(nrow(mat) - 1)))
   names(d) <- 0:(length(d) - 1)
   attributes(d)$label <- "Indegree"

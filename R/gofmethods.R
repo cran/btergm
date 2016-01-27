@@ -194,11 +194,20 @@ compute.goflist <- function(simulations, target, statistics, parallel = "no",
                   statistics[[z]], mc.cores = ncpus)))
               observed <- suppressMessages(unlist(mclapply(target, 
                   statistics[[z]], mc.cores = ncpus)))
-            } else {  # no mcsapply available -> cbind manually
-              simulated <- suppressMessages(do.call(cbind, 
-                  mclapply(simulations, statistics[[z]], mc.cores = ncpus)))
-              observed <- suppressMessages(do.call(cbind, mclapply(target, 
-                  statistics[[z]], mc.cores = ncpus)))
+            } else {  # no mcsapply available because different length vectors
+              simulated <- suppressMessages(mclapply(simulations, 
+                  statistics[[z]], mc.cores = ncpus))
+              observed <- suppressMessages(mclapply(target, statistics[[z]], 
+                  mc.cores = ncpus))
+              max.length.sim <- max(sapply(simulated, length), na.rm = TRUE)
+              max.length.obs <- max(sapply(observed, length), na.rm = TRUE)
+              max.length <- max(max.length.sim, max.length.obs, na.rm = TRUE)
+              simulated <- sapply(simulated, function(x) {
+                c(x, rep(0, max.length - length(x)))
+              })
+              observed <- sapply(observed, function(x) {
+                c(x, rep(0, max.length - length(x)))
+              })
             }
           } else {
             clusterEvalQ(cl, library("ergm"))
@@ -296,8 +305,6 @@ gof.btergm <- function(object, target = NULL, formula = getformula(object),
     statistics <- c(statistics)
   }
   
-  simulations <- list()
-  
   # prepare parallel processing; translate options into statnet arguments
   if (is.null(ncpus) || ncpus == 0) {
     ncpus <- 1
@@ -379,10 +386,9 @@ gof.btergm <- function(object, target = NULL, formula = getformula(object),
   
   # adjust formula at each step, and simulate networks
   sim <- list()
-  tstats <- list()
   degen <- list()
   for (index in 1:env$time.steps) {
-    i <- index
+    i <- index  # index 'i' is used in formula construction in 'env'!
     # simulations for statnet-style and rocpr GOF
     if (verbose == TRUE) {
       if ("btergm" %in% class(object) || "mtergm" %in% class(object)) {
@@ -868,9 +874,8 @@ gof.network <- function(object, covariates, coef, target = NULL,
     dat <- cbind(rep(1, nrow(dat)), dat)
     prob <- plogis(coef %*% t(dat))
     simval <- t(sapply(prob, function(x) rbinom(nsim, 1, x)))
-    simulations <- apply(simval, 2, function(x) network::network(matrix(x, 
-        nrow = num.vertices, byrow = FALSE), bipartite = bipartite, 
-        directed = directed))
+    simulations <- apply(simval, 2, function(x) Matrix(x, 
+        nrow = num.vertices, byrow = FALSE))
   }
   
   # if NA in target networks, put them in the base network, too, and vice-versa
@@ -879,7 +884,7 @@ gof.network <- function(object, covariates, coef, target = NULL,
   nw <- network::network(nw, directed = directed, bipartite = bipartite)
   target <- as.matrix(target)
   target[is.na(as.matrix(nw))] <- NA
-  target <- network::network(target, directed = directed, bipartite = bipartite)
+  target <- list(Matrix(target))
   
   # data preparation
   sptypes <- c("dgCMatrix", "dgTMatrix", "dsCMatrix", "dsTMatrix", "dgeMatrix")
@@ -901,7 +906,6 @@ gof.network <- function(object, covariates, coef, target = NULL,
       twomode[i] <- !is.mat.onemode(target[[i]])
     }
   }
-  simulations <- lapply(simulations, function(x) Matrix(as.matrix(x)))
   goflist <- compute.goflist(simulations = simulations, target = target, 
       statistics = statistics, parallel = parallel, ncpus = ncpus, cl = cl, 
       verbose = verbose)
