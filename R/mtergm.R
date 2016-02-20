@@ -1,7 +1,9 @@
+# redefine S3 as S4 classes for proper handling as part of the 'mtergm' class
+setOldClass(c("ergm", "ergm"))
 
 # an S4 class for btergm objects
 setClass(Class = "mtergm", 
-    representation = representation(
+    slots = c(
         coef = "numeric", 
         se = "numeric", 
         pval = "numeric", 
@@ -15,7 +17,8 @@ setClass(Class = "mtergm",
         estimate = "character", 
         loglik = "numeric", 
         aic = "numeric", 
-        bic = "numeric"
+        bic = "numeric", 
+        ergm = "ergm"
     ), 
     validity = function(object) {
         if (!"numeric" %in% class(object@coef)) {
@@ -58,11 +61,13 @@ setClass(Class = "mtergm",
 
 # constructor for btergm objects
 createMtergm <- function(coef, se, pval, nobs, time.steps, formula, 
-    auto.adjust, offset, directed, bipartite, estimate, loglik, aic, bic) {
+    auto.adjust, offset, directed, bipartite, estimate, loglik, aic, bic, 
+    ergm = ergm) {
   new("mtergm", coef = coef, se = se, pval = pval, nobs = nobs, 
       time.steps = time.steps, formula = formula, auto.adjust = auto.adjust, 
       offset = offset, directed = directed, bipartite = bipartite, 
-      estimate = estimate, loglik = loglik, aic = aic, bic = bic)
+      estimate = estimate, loglik = loglik, aic = aic, bic = bic, 
+      ergm = ergm)
 }
 
 
@@ -115,8 +120,7 @@ setMethod(f = "summary", signature = "mtergm", definition = function(object,
 
 
 # MCMC MLE estimation function (basically a wrapper for the ergm function)
-mtergm <- function(formula, constraints = ~ ., estimate = c("MLE", "MPLE"), 
-    verbose = TRUE, ...) {
+mtergm <- function(formula, constraints = ~ ., verbose = TRUE, ...) {
   
   # call tergmprepare and integrate results as a child environment in the chain
   env <- tergmprepare(formula = formula, offset = FALSE, blockdiag = TRUE, 
@@ -125,12 +129,11 @@ mtergm <- function(formula, constraints = ~ ., estimate = c("MLE", "MPLE"),
   
   if (verbose == TRUE) {
     message("Estimating...")
-    e <- ergm(env$mtergmestform, offset.coef = -Inf, constraints = constraints, 
-        eval.loglik = TRUE, estimate = estimate[1], ...)
+    e <- ergm(env$form, offset.coef = -Inf, constraints = constraints, 
+        eval.loglik = TRUE, ...)
   } else {
-    e <- suppressMessages(ergm(env$mtergmestform, offset.coef = -Inf, 
-        constraints = constraints, eval.loglik = TRUE, 
-        estimate = estimate[1], ...))
+    e <- suppressMessages(ergm(env$form, offset.coef = -Inf, 
+        constraints = constraints, eval.loglik = TRUE, ...))
   }
   
   # get coefficients and other details
@@ -162,7 +165,8 @@ mtergm <- function(formula, constraints = ~ ., estimate = c("MLE", "MPLE"),
       estimate = e$estimate,  # MLE or MPLE
       loglik = e$mle.lik[1], 
       aic = AIC(e), 
-      bic = BIC(e)
+      bic = BIC(e), 
+      ergm = e
   )
   
   if (verbose == TRUE) {
