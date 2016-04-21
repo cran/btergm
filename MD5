@@ -1,13 +1,13 @@
-f7e846610d6e424f4cf128769ddfe71b *DESCRIPTION
-a128a71d9c8a4263dde7be2df649bc38 *NAMESPACE
+68edcb3cc91b66a18d0b18e94590b4b9 *DESCRIPTION
+172743bec059a750e96efd93f9add0dc *NAMESPACE
 f8d51711a38896999bf9c40b150d137b *R/btergm.R
 8e7d8d245ebc5f8c4779d2ead47756e5 *R/checkdegeneracy.R
-da7df91c95e90b3dc2b8102e17d8de67 *R/gofmethods.R
+862f282cdb0a871d70114b98500925b8 *R/gofmethods.R
 261cd8d22c18278c993acf8f8d758bb5 *R/gofplot.R
-cc38834b31310834042f4f3c9010ab67 *R/gofstatistics.R
+2c717564b77225ac3e687858f4c96ade *R/gofstatistics.R
 4e0c5ff7820af257a58ae81dcc5e1af2 *R/interpretation.R
 533eb980b3f03a33e23793c22cf9f3ff *R/mtergm.R
-845f74220d55b8d473be4f70d369799f *R/tergmprepare.R
+d417985843b5087a9aa3edab69761fc7 *R/tergmprepare.R
 953b65fde58ae8d3e972e7b90ddd6207 *R/timecov.R
 728a2ab1bfe457105be882599f451521 *inst/CITATION
 303d23bbcc0fd530373e0399d255724e *man/btergm-class.Rd
@@ -15,7 +15,7 @@ cc38834b31310834042f4f3c9010ab67 *R/gofstatistics.R
 a495963442a43694bbf124977e7f0ce9 *man/btergm.Rd
 6529e4bcbe2e66ca6a46fbad9ee16145 *man/checkdegeneracy.Rd
 42f70599edbc73486cd93c8c58180fa8 *man/getformula.Rd
-fcaf22ecd16a62254b4a85ce41b5e377 *man/gofmethods.Rd
+47667e738e2f5d3cc2fe4a0b2e4e2135 *man/gofmethods.Rd
 19d9f63ba87d0cf3183344a027481d6c *man/gofplot.Rd
 3270da348e7e34c41096316274af3c7a *man/gofstatistics.Rd
 523ddf39ed1efddf535b903cc656d45d *man/interpret.Rd
