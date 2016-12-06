@@ -15,12 +15,16 @@ checkdegeneracy.btergm <- function(object, nsim = 1000, MCMC.interval = 1000,
     stop("The 'nsim' argument must be greater than 1.")
   }
   
-  # call tergmprepare and integrate results as a child environment in the chain
-  env <- tergmprepare(formula = getformula(object), offset = object@offset, 
+  # call tergmprepare and integrate results in local environment
+  l <- tergmprepare(formula = getformula(object), offset = object@offset, 
       verbose = verbose)
-  parent.env(env) <- environment()
+  for (i in 1:length(l$covnames)) {
+    assign(l$covnames[i], l[[l$covnames[i]]])
+  }
+  assign("offsmat", l$offsmat)
+  form <- as.formula(l$form)
   offset <- object@offset
-  target <- env$networks
+  target <- l$networks
   
   # extract coefficients from object
   if (class(object)[1] == "btergm" && offset == TRUE) {
@@ -31,60 +35,41 @@ checkdegeneracy.btergm <- function(object, nsim = 1000, MCMC.interval = 1000,
   
   # adjust formula at each step, and simulate networks
   sim <- list()
-  tstats <- list()
+  target.stats <- list()
   degen <- list()
-  for (index in 1:env$time.steps) {
+  for (index in 1:l$time.steps) {
     i <- index
     if (verbose == TRUE) {
       f.i <- gsub("\\[\\[i\\]\\]", paste0("[[", index, "]]"), 
-          paste(deparse(env$form), collapse = ""))
+          paste(deparse(form), collapse = ""))
       f.i <- gsub("\\s+", " ", f.i)
-      f.i <- gsub("^networks", env$lhs.original, f.i)
+      f.i <- gsub("^networks", l$lhs.original, f.i)
       message(paste("Simulating", nsim, 
           "networks from the following formula:\n", f.i, "\n"))
     }
-    tstats[[index]] <- summary(ergm::remove.offset.formula(env$form), 
+    target.stats[[index]] <- summary(ergm::remove.offset.formula(form), 
         response = NULL)
-    degen[[index]] <- simulate.formula(env$form, nsim = nsim, 
+    degen[[index]] <- simulate.formula(form, nsim = nsim, 
         coef = coefs, statsonly = TRUE, 
         control = control.simulate.formula(MCMC.interval = 
         MCMC.interval, MCMC.burnin = MCMC.burnin))
+    if (offset == TRUE || "mtergm" %in% class(object)) {
+      degen[[i]] <- degen[[i]][, -ncol(degen[[i]])]  # remove offset statistic
+    }
   }
-  
-  degensim <- matrix(nrow = 0, ncol = ncol(degen[[1]]))
-  target.stats <- list()
-  for (i in 1:length(degen)) {
-    degensim <- rbind(degensim, degen[[i]])
-    target.stats[[i]] <- tstats[[i]]
-  }
-  if (offset == TRUE || "mtergm" %in% class(object)) {
-    degensim <- degensim[, -ncol(degensim)]  # get rid of offset statistic
-  }
-  rm(tstats)
-  rm(degen)
   
   if (verbose == TRUE) {
     message("Checking degeneracy...")
   }
-  mat <- list()
-  for (i in 1:env$time.steps) {
-    sm <- coda::as.mcmc.list(coda::as.mcmc(degensim))
-    sm <- ergm::sweep.mcmc.list(sm, target.stats[[i]], "-")
-    center <- TRUE
-    ds <- ergm::colMeans.mcmc.list(sm) - if (!center) target.stats[[i]] else 0
-    sds <- apply(degensim, 2, sd)
-    ns <- coda::effectiveSize(sm)
-    se <- sds * sqrt(ns)
-    z <- ds / se
-    p.z <- pnorm(abs(z), lower.tail = FALSE) * 2
-    mat[[i]] <- cbind("obs" = target.stats[[i]], "sim" = colMeans(degensim), 
-        "est" = ds, "se" = se, "zval" = z, "pval" = p.z)
-  }
   class(mat) <- "degeneracy"
+  object <- list()
+  object$target.stats <- target.stats
+  object$sim <- degen
+  class(object) <- "degeneracy"
   if (verbose == TRUE) {
     message("Done.")
   }
-  return(mat)
+  return(object)
 }
 
 setMethod("checkdegeneracy", signature = className("btergm", "btergm"), 
@@ -92,11 +77,63 @@ setMethod("checkdegeneracy", signature = className("btergm", "btergm"),
 
 
 # print method for 'degeneracy' objects
-print.degeneracy <- function(x, ...) {
-  for (i in 1:length(x)) {
+print.degeneracy <- function(x, center = FALSE, t = 1:length(x$sim), 
+    terms = 1:length(x$target.stats[[1]]), ...) {
+  for (i in t) {
     message(paste0("\nDegeneracy check for network ", i, ":"))
-    printCoefmat(x[[i]], digits = 3, P.values = TRUE, has.Pvalue = TRUE, 
-        cs.ind = 3:4, ts.ind = 5)
+    if (center == TRUE) {
+      sm <- coda::as.mcmc.list(coda::as.mcmc(x$sim[[i]]))
+      sm <- ergm::sweep.mcmc.list(sm, x$target.stats[[i]], "-")[[1]] # diff
+      q <- t(apply(as.matrix(sm), 2, function(x) {
+        quantile(x, probs = c(0.025, 0.25, 0.5, 0.75, 0.975))
+      }))
+    } else {
+      q <- t(apply(x$sim[[i]], 2, function(x) {
+        quantile(x, probs = c(0.025, 0.25, 0.5, 0.75, 0.975))
+      }))
+      q <- cbind("obs" = x$target.stats[[i]], q)
+    }
+    rn <- rownames(q)[terms]
+    cn <- colnames(q)
+    q <- q[terms, ]
+    if (class(q) != "matrix") {
+      q <- matrix(q, nrow = 1)
+      rownames(q) <- rn
+      colnames(q) <- cn
+    }
+    printCoefmat(q)
   }
-  message("\nSmall p-values indicate degenerate results.")
+}
+
+
+# plot method for 'degeneracy' objects
+plot.degeneracy <- function(x, center = TRUE, t = 1:length(x$sim), 
+    terms = 1:length(x$target.stats[[1]]), vbar = TRUE, main = NULL, 
+    xlab = NULL, target.col = "red", target.lwd = 3, ...) {
+  for (i in t) {
+    for (j in terms) {
+      if (is.null(main)) {
+         m <- paste0(colnames(x$sim[[i]])[j], " at t = ", i)
+      } else {
+         m <- main
+      }
+      if (is.null(xlab)) {
+         xl <- colnames(x$sim[[i]])[j]
+      } else {
+         xl <- xlab
+      }
+      if (center == FALSE) {
+        hist(x$sim[[i]][, j], main = m, xlab = xl, ...)
+        if (vbar == TRUE) {
+          abline(v = x$target.stats[[i]][j], col = target.col, lwd = target.lwd)
+        }
+      } else {
+        centered <- x$sim[[i]][, j] - x$target.stats[[i]][j]
+        hist(centered, main = m, xlab = xl, ...)
+        if (vbar == TRUE) {
+          abline(v = 0, col = target.col, lwd = target.lwd)
+        }
+      }
+    }
+  }
 }

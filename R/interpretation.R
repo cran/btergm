@@ -1,19 +1,23 @@
 
 # Internal helper function, which does the actual interpretation computations. 
-# Needs an environment as provided by tergmprepare, including a list of 
-# networks (env$networks, with possibly just one network in this list) and a 
-# formula (env$form, with temporal indices, as prepared by tergmprepare). Also 
+# Needs a list as provided by tergmprepare, including a list of 
+# networks (l$networks, with possibly just one network in this list) and a 
+# formula (l$form, with temporal indices, as prepared by tergmprepare). Also 
 # need to supply coefficients vector, type string, i, j, and t (where t can be 
 # 1 if there is only one network).
-dointerpret <- function(env, coefficients, type, i, j, t) {
-  parent.env(env) <- environment()
+dointerpret <- function(l, coefficients, type, i, j, t) {
+  for (cv in 1:length(l$covnames)) {
+    assign(l$covnames[cv], l[[l$covnames[cv]]])
+  }
+  assign("offsmat", l$offsmat)
+  form <- as.formula(l$form)
   
   # prepare i and j
   if (!is.list(i)) {
-    i <- rep(list(i), length(env$networks))
+    i <- rep(list(i), length(l$networks))
     num.actors <- numeric()
     for (k in t) {  # note that t can be a vector of time steps
-      num.actors[k] <- nrow(as.matrix(env$networks[[k]]))
+      num.actors[k] <- nrow(as.matrix(l$networks[[k]]))
     }
     if (length(table(num.actors)) > 1) {
       warning(paste("'i' does not vary across time steps, but the number of",
@@ -21,18 +25,18 @@ dointerpret <- function(env, coefficients, type, i, j, t) {
     }
   }
   if (!is.list(j)) {
-    j <- rep(list(j), length(env$networks))
+    j <- rep(list(j), length(l$networks))
     num.actors <- numeric()
     for (k in t) {
-      num.actors[k] <- nrow(as.matrix(env$networks[[k]]))
+      num.actors[k] <- nrow(as.matrix(l$networks[[k]]))
     }
     if (length(table(num.actors)) > 1) {
       warning(paste("'j' does not vary across time steps, but the number of",
           "actors does. 'j' can be provided as a list or as a name."))
     }
   }
-  for (l in 1:length(j)) {
-    if (length(j[[l]]) > 1 && (type == "tie" || type == "dyad")) {
+  for (ll in 1:length(j)) {
+    if (length(j[[ll]]) > 1 && (type == "tie" || type == "dyad")) {
       stop(paste("For computing dyadic or tie probabilities, only a single 'j'",
           "node can be specified per time step."))
     }
@@ -43,10 +47,10 @@ dointerpret <- function(env, coefficients, type, i, j, t) {
   if (type == "tie") {
     results <- numeric()
     for (i in t) {
-      env$networks[[i]][node_i[[i]], node_j[[i]]] <- 0
-      stat0 <- summary(env$form, response = NULL)
-      env$networks[[i]][node_i[[i]], node_j[[i]]] <- 1
-      stat1 <- summary(env$form, response = NULL)
+      networks[[i]][node_i[[i]], node_j[[i]]] <- 0
+      stat0 <- summary(form, response = NULL)
+      networks[[i]][node_i[[i]], node_j[[i]]] <- 1
+      stat1 <- summary(form, response = NULL)
       chgstat <- stat1 - stat0
       if (length(chgstat) != length(coefficients)) {
         stop(paste("Number of coefficients and statistics differ.",
@@ -58,8 +62,20 @@ dointerpret <- function(env, coefficients, type, i, j, t) {
           coefficients[k] <- 0  # no struct zero dyad; replace -Inf to avoid NaN
         }
       }
-      lp <- t(chgstat) %*% cbind(coefficients)
-      result <- c(1 / (1 + exp(-lp)))
+      inf <- FALSE  # next couple of lines: prevent errors with structural ones
+      for (k in 1:length(coefficients)) {
+        if (coefficients[k] == Inf && chgstat[k] != 0) {
+          inf <- TRUE
+          break
+        }
+      }
+      if (inf == TRUE) {
+        result <- 1
+      } else {  # do the actual probability computations
+        coefficients[coefficients == Inf] <- 0
+        lp <- t(chgstat) %*% cbind(coefficients)
+        result <- c(1 / (1 + exp(-lp)))
+      }
       names(result) <- "i->j = 1"
       results[i] <- result
     }
@@ -73,13 +89,20 @@ dointerpret <- function(env, coefficients, type, i, j, t) {
           "approximated by a large negative number (-9e8). Note that", 
           "this may be imprecise."))
     }
+    if (Inf %in% coefficients) {
+      coefficients[coefficients == Inf] <- 9e8
+      warning(paste("There are +Inf coefficients (possibly due to", 
+          "offset terms). To yield interpretable results, +Inf is", 
+          "approximated by a large positive number (9e8). Note that", 
+          "this may be imprecise."))
+    }
     results <- list()
     for (i in t) {
       # print error if undirected
-      if ((class(env$networks[[i]]) == "network" && 
-          !is.directed(env$networks[[i]])) || 
-          (class(env$networks[[i]]) == "matrix" && 
-          is.mat.directed(env$networks[[i]]) == FALSE)) {
+      if ((class(l$networks[[i]]) == "network" && 
+          !is.directed(l$networks[[i]])) || 
+          (class(l$networks[[i]]) == "matrix" && 
+          is.mat.directed(l$networks[[i]]) == FALSE)) {
         stop(paste0("Network at t=", i, " is undirected. Dyadic ", 
             "probabilities do not make sense in undirected networks. Try ", 
             "type = \"tie\" instead!"))
@@ -87,9 +110,9 @@ dointerpret <- function(env, coefficients, type, i, j, t) {
       eta_mat <- matrix(NA, 2, 2)
       for (xi in 0:1) {
         for (xj in 0:1) {
-          env$networks[[i]][node_i[[i]], node_j[[i]]] <- xi
-          env$networks[[i]][node_j[[i]], node_i[[i]]] <- xj
-          stat <- summary(env$form, response = NULL)
+          networks[[i]][node_i[[i]], node_j[[i]]] <- xi
+          networks[[i]][node_j[[i]], node_i[[i]]] <- xj
+          stat <- summary(form, response = NULL)
           if (length(stat) != length(coefficients)) {
             stop(paste("Number of coefficients and statistics differ.",
                 "Did you fit a curved model? Curved models with non-fixed",
@@ -119,6 +142,13 @@ dointerpret <- function(env, coefficients, type, i, j, t) {
           "approximated by a large negative number (-9e8). Note that", 
           "this may be imprecise."))
     }
+    if (Inf %in% coefficients) {
+      coefficients[coefficients == Inf] <- 9e8
+      warning(paste("There are +Inf coefficients (possibly due to", 
+          "offset terms). To yield interpretable results, +Inf is", 
+          "approximated by a large positive number (9e8). Note that", 
+          "this may be imprecise."))
+    }
     results <- list()
     for (i in t) {
       m <- length(node_i[[i]])
@@ -133,8 +163,8 @@ dointerpret <- function(env, coefficients, type, i, j, t) {
         m <- length(node_i[[i]])
         n <- length(node_j[[i]])
       } else {
-        stop(paste("Either 'i' or 'j' must contain more than one node per",
-            "time step."))
+        stop(paste("Either 'i' or 'j' must contain more than one node (per",
+            "time step)."))
       }
       vecs <- rbind(rep(0, n), rep(1, n))
       base <- rep(0, n)
@@ -150,8 +180,8 @@ dointerpret <- function(env, coefficients, type, i, j, t) {
       for (l in 1:nrow(vecs)) {
         ik <- node_i[[i]]
         jk <- node_j[[i]]
-        env$networks[[i]][ik, jk] <- vecs[l, ]
-        stat <- summary(env$form, response = NULL)
+        networks[[i]][ik, jk] <- vecs[l, ]
+        stat <- summary(form, response = NULL)
         if (length(stat) != length(coefficients)) {
           stop(paste("Number of coefficients and statistics differ.",
               "Did you fit a curved model? Curved models with non-fixed",
@@ -182,15 +212,32 @@ dointerpret <- function(env, coefficients, type, i, j, t) {
 interpret.ergm <- function(object, formula = getformula(object), 
     coefficients = coef(object), target = NULL, type = "tie", i, j) {
   
-  env <- tergmprepare(formula = formula, offset = FALSE, blockdiag = FALSE, 
+  if (!is.null(target) && is.numeric(target)) {
+    stop(paste("'target' argument (short: 't') cannot be numeric."))
+  }
+  
+  l <- tergmprepare(formula = formula, offset = FALSE, blockdiag = FALSE, 
       verbose = FALSE)
   
   # extract response network and adjust formula
   if (!is.null(target)) {
-    env$networks <- list(target)
+    l$networks <- list(target)
   }
   
-  dointerpret(env, coefficients = coefficients, type = type, i = i, j = j, 
+  # warn about indices with bipartite networks
+  if (class(l$networks[[1]]) == "network" 
+      && is.bipartite(l$networks[[1]]) || 
+      class(l$networks[[1]]) == "matrix" 
+      && !is.mat.onemode(l$networks[[1]])) {
+    if (is.numeric(j) && j < nrow(as.matrix(l$networks[[1]])) + 1) {
+      stop(paste0("In this bipartite network, the indices of the 'j' ", 
+          "index start with ", nrow(as.matrix(l$networks[[1]])) + 1, 
+          ". Smaller indices denote within-block entries and do not make ", 
+          "any sense."))
+    }
+  }
+  
+  dointerpret(l, coefficients = coefficients, type = type, i = i, j = j, 
       t = 1)[[1]]
 }
 
@@ -200,16 +247,29 @@ interpret.btergm <- function(object, formula = getformula(object),
     coefficients = coef(object), target = NULL, type = "tie", i, j, 
     t = 1:object@time.steps) {
   
-  env <- tergmprepare(formula = formula, offset = FALSE, blockdiag = FALSE, 
+  l <- tergmprepare(formula = formula, offset = FALSE, blockdiag = FALSE, 
       verbose = FALSE)
-  parent.env(env) <- environment()
   
   # extract response networks and adjust formula
   if (!is.null(target)) {
-    env$networks <- target
+    l$networks <- target
   }
   
-  dointerpret(env, coefficients = coefficients, type = type, i = i, j = j, 
+  # warn about indices with bipartite networks
+  for (h in t) {
+    if (class(l$networks[[h]]) == "network" && is.bipartite(l$networks[[h]]) || 
+        class(l$networks[[h]]) == "matrix" 
+        && !is.mat.onemode(l$networks[[h]])) {
+      if (is.numeric(j) && j < nrow(as.matrix(l$networks[[h]])) + 1) {
+        stop(paste0("In this bipartite network, the indices of the 'j' ", 
+            "index start with ", nrow(as.matrix(l$networks[[h]])) + 1, 
+            " at t=", h, ". Smaller indices denote within-block entries and ", 
+            "do not make any sense."))
+      }
+    }
+  }
+  
+  dointerpret(l, coefficients = coefficients, type = type, i = i, j = j, 
       t = t)
 }
 
@@ -226,8 +286,7 @@ setMethod("interpret", signature = className("mtergm", "btergm"),
 
 
 # a function that creates all tie probabilities along with some other variables
-edgeprob <- function(object, parallel = c("no", "multicore", "snow"), 
-    ncpus = 1, cl = NULL, verbose = TRUE) {
+edgeprob <- function(object, verbose = FALSE) {
   
   # determine if ERGM or TERGM
   if (class(object) == "ergm") {
@@ -240,10 +299,14 @@ edgeprob <- function(object, parallel = c("no", "multicore", "snow"),
   }
   
   # prepare data structures in a local environment
-  env <- tergmprepare(formula = getformula(object), offset = FALSE, 
+  l <- tergmprepare(formula = getformula(object), offset = FALSE, 
       blockdiag = FALSE, verbose = FALSE)
-  parent.env(env) <- environment()
-  covnames <- env$covnames[-1]  # leave out the LHS network(s)
+  for (cv in 1:length(l$covnames)) {
+    assign(l$covnames[cv], l[[l$covnames[cv]]])
+  }
+  assign("offsmat", l$offsmat)
+  form <- as.formula(l$form)
+  covnames <- l$covnames[-1]  # leave out the LHS network(s)
   coefs <- coef(object)
   
   # create matrix with MPLE predictors and i, j, and t indices
@@ -252,13 +315,13 @@ edgeprob <- function(object, parallel = c("no", "multicore", "snow"),
   }
   Y <- NULL
   dyads <- NULL
-  for (i in 1:length(env$networks)) {
-    mat <- as.matrix(env$networks[[i]])
+  for (i in 1:length(l$networks)) {
+    mat <- as.matrix(l$networks[[i]])
     imat <- matrix(rep(1:nrow(mat), ncol(mat)), nrow = nrow(mat))
-    if ((class(env$networks[[i]]) == "network" && 
-        is.bipartite(env$networks[[i]])) || 
-        (class(env$networks[[i]]) == "matrix" && 
-        is.mat.onemode(env$networks[[i]]) == FALSE)) {
+    if ((class(l$networks[[i]]) == "network" && 
+        is.bipartite(l$networks[[i]])) || 
+        (class(l$networks[[i]]) == "matrix" && 
+        is.mat.onemode(l$networks[[i]]) == FALSE)) {
       mn <- nrow(mat) + 1
       mx <- nrow(mat) + ncol(mat)
       jmat <- matrix(rep(mn:mx, nrow(mat)), nrow = nrow(mat), byrow = TRUE)
@@ -266,11 +329,7 @@ edgeprob <- function(object, parallel = c("no", "multicore", "snow"),
       jmat <- matrix(rep(1:ncol(mat), nrow(mat)), nrow = nrow(mat), 
           byrow = TRUE)
     }
-    form.middle <- as.character(env$form)[[1]]
-    form.left <- as.character(env$form)[[2]]
-    form.right <- as.character(env$form)[[3]]
-    form.right <- paste0(form.right, " + edgecov(imat) + edgecov(jmat)")
-    f <- as.formula(paste(form.left, form.middle, form.right), env = env)
+    f <- as.formula(paste(l$form, " + edgecov(imat) + edgecov(jmat)"))
     mpli <- ergm::ergmMPLE(f)
     Y <- c(Y, mpli$response)
     dyads <- rbind(dyads, cbind(mpli$predictor, i))
@@ -285,85 +344,25 @@ edgeprob <- function(object, parallel = c("no", "multicore", "snow"),
   class(dyads[, length(colnames(dyads))]) <- "integer"
   class(dyads[, length(colnames(dyads)) - 1]) <- "integer"
   class(dyads[, length(colnames(dyads)) - 2]) <- "integer"
-  dyads <- dyads[sample(nrow(dyads)), ]
-  
-  # define interpret wrapper function for rows of the MPLE predictor matrix
-  if (tergm == TRUE) {
-    interpret.parallel <- function(index, subs, env, coefs) {
-      dointerpret(env, coefs, type = "tie", i = subs[index, 1], 
-          j = subs[index, 2], t = subs[index, 3])
-    }
-  } else {
-    interpret.parallel <- function(index, subs, env, coefs) {
-      dointerpret(env, coefs, type = "tie", i = subs[index, 1], 
-          j = subs[index, 2], t = 1)
-    }
+
+  # take care of structural zeros and ones
+  cf <- coef(object)
+  cf.length <- length(cf)  
+  cf <- cf[!cf %in% c(Inf, -Inf)]
+  if (length(cf != cf.length)) {
+    warning(paste("There are structural zeros or ones. For these dyads, the",
+        "predicted probabilities are not valid and must be manually replaced",
+        "by 0 or 1, respectively."))
   }
   
-  # subset dyads if necessary
-  indices <- 1:nrow(dyads)
-  subs <- cbind(dyads$i, dyads$j, dyads$t)
-  subs <- subs[indices, ]
-  dyads <- dyads[indices, ]
-  
-  # compute probabilities (possibly in parallel)
-  if (is.null(ncpus) || ncpus == 0) {
-    ncpus <- 1
-  }
-  if (!parallel[1] %in% c("no", "multicore", "snow")) {
-    parallel <- "no"
-    warning("'parallel' argument not recognized. Using 'no' instead.")
-  }
-  if (parallel[1] == "snow") {
-    if (is.null(cl)) {
-      created <- TRUE
-      cl <- makeCluster(ncpus)
-    } else {
-      created <- FALSE
-    }
-    if (verbose == TRUE) {
-      message(paste("Using snow parallelization with", ncpus, "cores."))
-    }
-    clusterEvalQ(cl, library("btergm"))
-    a <- proc.time()
-    prob <- parSapply(cl, 1:nrow(subs), interpret.parallel, subs, env, coefs)
-    b <- proc.time()
-    if (created == TRUE) {
-      stopCluster(cl)
-    }
-    if (verbose == TRUE) {
-      message(paste("Time elapsed:"))
-      print(b - a)
-    }
-  } else if (parallel[1] == "multicore") {
-    if (verbose == TRUE) {
-      message(paste("Using multicore parallelization with", ncpus, "cores."))
-    }
-    a <- proc.time()
-    prob <- mclapply(1:nrow(subs), interpret.parallel, subs, env, coefs, 
-        mc.cores = ncpus)
-    prob <- unlist(prob)
-    b <- proc.time()
-    if (verbose == TRUE) {
-      message(paste("Time elapsed:"))
-      print(b - a)
-    }
-  } else {
-    if (verbose == TRUE) {
-      message(paste0("Parallelization is switched off. Computing", 
-          "probabilities sequentially."))
-    }
-    a <- proc.time()
-    prob <- sapply(1:nrow(subs), interpret.parallel, subs, env, coefs)
-    b <- proc.time()
-    if (verbose == TRUE) {
-      message(paste("Time elapsed:"))
-      print(b - a)
-    }
-  }
+  # compute predicted probabilities
+  cbcoef <- cbind(cf)
+  chgstat <- dyads[, 2:(ncol(dyads) - 3)]
+  lp <- apply(chgstat, 1, function(x) t(x) %*% cbcoef)
+  result <- c(1 / (1 + exp(-lp)))
+  dyads <- cbind(dyads, result)
   
   # combine dyads/predictors and probabilities, sort, and return
-  dyads <- cbind(dyads, prob)
   colnames(dyads)[ncol(dyads)] <- "probability"
   dyads <- dyads[order(dyads$t, dyads$i, dyads$j), ]
   rownames(dyads) <- NULL
