@@ -1,13 +1,13 @@
-fb25a9374345cee03add80a8a840c3c3 *DESCRIPTION
+ca2a1cba21f3e0985b1f5bc445de9ac3 *DESCRIPTION
 5c5e490c1a1399c2ffb0e65953220aa9 *NAMESPACE
-85671179d60972d943cb8aadee5448f5 *R/btergm.R
+1d243e4e9b11b5a27776f27df9db0237 *R/btergm.R
 810114208b5aeb1325d917f5ee3d34e0 *R/checkdegeneracy.R
 0ab5107dd2d77d6dcbec83d7441b211d *R/gofmethods.R
 261cd8d22c18278c993acf8f8d758bb5 *R/gofplot.R
 9f3f48af6d5397868361d3580d3b1c18 *R/gofstatistics.R
 833b0a5cfe20e3742a2835448018ed1b *R/interpretation.R
 adc07bd2ef004f717fa45147cc22044b *R/mtergm.R
-0b61d0ebf01549651a836852a2c43fde *R/tergmprepare.R
+fa91f8f5fb7eca6ad0447fd6faf306a2 *R/tergmprepare.R
 953b65fde58ae8d3e972e7b90ddd6207 *R/timecov.R
 33c3ffad1c5aed5181eb1e25fee2549f *inst/CITATION
 e57b3f100cb83d0c683f71e1a284786a *man/btergm-class.Rd
