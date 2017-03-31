@@ -1,5 +1,3 @@
-
-
 # helper function for adjusting matrix dimensions and creating an offset matrix
 tergmprepare <- function(formula, offset = TRUE, blockdiag = FALSE, 
     verbose = TRUE) {
@@ -262,13 +260,27 @@ tergmprepare <- function(formula, offset = TRUE, blockdiag = FALSE,
           "maximum", "transform", "min", "max", "trans")) {
         s <- "(?:timecov\\(?:.*x\\s*=\\s*)(\\w+)(?:.*\\))"
       }
+      
+      # ensure there are no duplicate model term names
+      countprevtc <- 1
+      if (k > 1) {
+        for (i in (k - 1):1) {
+          if (grepl("timecov", l$rhs.terms[i])) {
+            countprevtc <- countprevtc + 1
+          }
+        }
+      }
+      if (countprevtc > 0) {
+        countprevtc <- as.character(countprevtc)
+      } else {
+        countprevtc <- ""
+      }
       if (grepl(s, l$rhs.terms[k]) == FALSE) {
         x <- NULL
-        suffix <- ""
-        label <- "timecov"
+        label <- paste0("timecov", countprevtc)
       } else {
         x <- sub(s, "\\1", l$rhs.terms[k], perl = TRUE)
-        label <- paste0("timecov.", x)
+        label <- paste0("timecov", countprevtc, ".", x)
       }
       
       # extract minimum argument
@@ -290,7 +302,7 @@ tergmprepare <- function(formula, offset = TRUE, blockdiag = FALSE,
       # extract transform argument
       s <- "(?:timecov\\(.*transform\\s*=\\s*)(.+?)(?:(?:,|\\)$)]*.*)"
       if (grepl(s, l$rhs.terms[k]) == FALSE) {
-        transform <- function(t) 1 + (0 * t) + (0 * t^2)
+        transform <- function(t) t
       } else {
         transform <- eval(parse(text = sub(s, "\\1", l$rhs.terms[k], 
             perl = TRUE)))
@@ -309,6 +321,8 @@ tergmprepare <- function(formula, offset = TRUE, blockdiag = FALSE,
       
       # re-introduce as edgecov and name of model term including brackets
       l[[label]] <- tc
+      labelsuffix <- sub(s, "\\1", l$rhs.terms[k], perl = TRUE)
+      labelsuffix <- 
       if (blockdiag == TRUE) {
         l$rhs.terms[k] <- paste0("edgecov(", label, ")")
       } else {
