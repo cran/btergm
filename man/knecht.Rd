@@ -108,13 +108,13 @@ value 5 was never observed.
 \examples{
 \dontrun{
 # ====================================================================
-# The following example was taken from the JSS article about btergm 
+# The following example was taken from the JSS article about btergm
 # that is referenced above (Leifeld, Cranmer and Desmarais 2018).
 # ====================================================================
 
 require("texreg")
 require("sna")
-require("xergm")
+require("btergm")
 require("RSiena")
 data("knecht")
 
@@ -178,6 +178,9 @@ model.2d <- mtergm(friendship ~ edges + mutual + ttriple +
     control = control.ergm(MCMC.samplesize = 5000, MCMC.interval = 2000))
 
 # step 7: GOF assessment with out-of-sample prediction
+# (note the commentaries and corrections at
+#  https://doi.org/10.1017/nws.2022.7 and
+#  https://doi.org/10.1017/nws.2022.6)
 model.2e <- btergm(friendship[1:3] ~ edges + mutual + ttriple +
     transitiveties + ctriple + nodeicov("idegsqrt") +
     nodeicov("odegsqrt") + nodeocov("odegsqrt") +
@@ -206,7 +209,7 @@ Department of Sociology, Utrecht University. (ICS-Codebook no. 61).
 Knecht, Andrea (2008): \emph{Friendship Selection and Friends' Influence.
 Dynamics of Networks and Actor Attributes in Early Adolescence}. PhD
 Dissertation, University of Utrecht. \url{
-http://dspace.library.uu.nl/bitstream/handle/1874/25950/full.pdf}.
+https://dspace.library.uu.nl/handle/1874/25950}.
 
 Knecht, Andrea, Tom A. B. Snijders, Chris Baerveldt, Christian E.  G.
 Steglich, and Werner Raub (2010): Friendship and Delinquency: Selection and
