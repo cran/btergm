@@ -1,7 +1,8 @@
-e0e0a2a13ce7743deb653e7927491cdf *DESCRIPTION
+e45a4f8a9ac093f79e110e10764d4367 *DESCRIPTION
 ed9fb65451f62ff085e6c73a58c0fa54 *NAMESPACE
 dba36af7a9711c0aa933eca6abf2da0f *R/alliances.R
 b77b852a1bbd78642a8ba78b4c7c0df2 *R/btergm.R
+791fc314f4cda4edbc9f275052e6c8f1 *R/ch_coauthor.R
 cff4ea2b386429ee77f9a2f362dfb277 *R/checkdegeneracy.R
 b85cdc945500f9b76409d9b8e34bf21a *R/chemnet.R
 c804210ac4c36f093d038c0c89bc197a *R/getformula.R
@@ -15,8 +16,9 @@ d63a439612f65c12e87a1e7afe7c49d8 *R/knecht.R
 421266e75db0862bdca500aeb1489fdb *R/tbergm.R
 0f8c1997d83dc2245a10ba1d9f45f429 *R/tergmprepare.R
 143c56506fcc170c85254d0c850f4dcb *R/timecov.R
-7f2094c7b4d5faa522b624cffc621f8b *build/partial.rdb
+7080893e02c49cd296d4424b9be55069 *build/partial.rdb
 803770499d76ea59d1b3fc041cc227ba *data/alliances.RData
+0fc51f42e6cc32cff65a0a63841805f3 *data/ch_coauthor.RData
 cf66e37674179e746ac04afa2f095063 *data/chemnet.rda
 7695504571a3e96b502ee5d3fd675186 *data/knecht.rda
 d4d6ee85281ff1d07cbb2698deeaf555 *inst/CITATION
@@ -27,6 +29,7 @@ d4d6ee85281ff1d07cbb2698deeaf555 *inst/CITATION
 15484558b47f48f6880550ed0e6b906a *man/btergm.Rd
 5134c70821de91c86154db2219e57de8 *man/checkdegeneracy.Rd
 462b48898f5dec6255e05b23c8e74772 *man/chemnet.Rd
+fea26e56c47fe85f3b6983303e813381 *man/coauthor.Rd
 43929231bf9804129e606c47fd793627 *man/createBtergm.Rd
 9c6edebeb91aa6a5552e0a6cab1ddab7 *man/createMtergm.Rd
 b93cd7914f4ff66109f70d971d8b310b *man/createTbergm.Rd
