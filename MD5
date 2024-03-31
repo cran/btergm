@@ -1,14 +1,14 @@
-e45a4f8a9ac093f79e110e10764d4367 *DESCRIPTION
+50b3a3743bc3d9fad580c619ed59514f *DESCRIPTION
 ed9fb65451f62ff085e6c73a58c0fa54 *NAMESPACE
 dba36af7a9711c0aa933eca6abf2da0f *R/alliances.R
-b77b852a1bbd78642a8ba78b4c7c0df2 *R/btergm.R
+9067d9de6d41b066cf91ff823f927219 *R/btergm.R
 791fc314f4cda4edbc9f275052e6c8f1 *R/ch_coauthor.R
 cff4ea2b386429ee77f9a2f362dfb277 *R/checkdegeneracy.R
 b85cdc945500f9b76409d9b8e34bf21a *R/chemnet.R
 c804210ac4c36f093d038c0c89bc197a *R/getformula.R
 c29bc34718900d10e21b7c5cfc453349 *R/gofmethods.R
 3f124967e3b128fd5d22bc1894f7ad99 *R/gofplot.R
-b73df35bfe27d69f8fba55945691921c *R/gofstatistics.R
+b9da48b96db37932479a313ffd72560f *R/gofstatistics.R
 c08e7009b30d48b639442046efebd017 *R/interpretation.R
 d63a439612f65c12e87a1e7afe7c49d8 *R/knecht.R
 4fc5dd4feef6de068e267efc17a14ba7 *R/mtergm.R
@@ -16,7 +16,7 @@ d63a439612f65c12e87a1e7afe7c49d8 *R/knecht.R
 421266e75db0862bdca500aeb1489fdb *R/tbergm.R
 0f8c1997d83dc2245a10ba1d9f45f429 *R/tergmprepare.R
 143c56506fcc170c85254d0c850f4dcb *R/timecov.R
-7080893e02c49cd296d4424b9be55069 *build/partial.rdb
+ea124a494ad7922985532ad3b308e4d5 *build/partial.rdb
 803770499d76ea59d1b3fc041cc227ba *data/alliances.RData
 0fc51f42e6cc32cff65a0a63841805f3 *data/ch_coauthor.RData
 cf66e37674179e746ac04afa2f095063 *data/chemnet.rda
@@ -25,7 +25,7 @@ d4d6ee85281ff1d07cbb2698deeaf555 *inst/CITATION
 4af141b7e75ad6a7315b40579f2a63bf *man/adjust.Rd
 80dc16a213bacaa8dc1e4debd232a741 *man/alliances.Rd
 19aa6e1b7bd59ece0d001f712b882aec *man/btergm-class.Rd
-648d56799fba1468248a2d0b07ad6b23 *man/btergm-package.Rd
+b1953fd605cc7e94af164473236d938b *man/btergm-package.Rd
 15484558b47f48f6880550ed0e6b906a *man/btergm.Rd
 5134c70821de91c86154db2219e57de8 *man/checkdegeneracy.Rd
 462b48898f5dec6255e05b23c8e74772 *man/chemnet.Rd
@@ -36,7 +36,7 @@ b93cd7914f4ff66109f70d971d8b310b *man/createTbergm.Rd
 ff983191b6cac620b07fd72076d507b9 *man/edgeprob.Rd
 67a4f1b053a00fd3386b9a374ff3885f *man/getformula.Rd
 2e44b630a2b29939e5459ede9e1e1a28 *man/gof-plot.Rd
-41a8b79dca81863f17f19186b8c9c8b5 *man/gof-statistics.Rd
+1a406bda5c44ed946d03158be8f51ecb *man/gof-statistics.Rd
 4cf212774054325f5137cb896362d334 *man/gof.Rd
 550e6965e0d5a2cdea55a2fee65560d2 *man/handleMissings.Rd
 6c104b70b0fb8baec593f20ca1611a53 *man/interpret.Rd
